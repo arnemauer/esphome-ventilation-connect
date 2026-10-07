@@ -440,8 +440,8 @@ delen (zoals de vier `Irrad`-richtingen) staat dat gedeelde paar in het blok van
 | Naam | R/W | Waarde | Bereik | Eenheid | Busadres | |
 |---|---|---|---|---|---|---|
 | `Enable` | R | False |  |  | 0x34FE | 🟡 |
-| `Period` | W | 60 | 10..1200 /5 |  | 0x3401 of 0xF706 | 🟡 |
-| `Type` | W | 0 | 0..3 /1 |  | 0xE100 of 0xF901 | 🟡 |
+| `Period` | W | 60 | 10..1200 /5 |  | 0x3501 | ✅ |
+| `Type` | W | 0 | 0..3 /1 |  | 0x3500 | ✅ |
 
 ## WeatherProtect
 
