@@ -1,0 +1,1126 @@
+# ============================================================================
+#  DucoBox Energy Comfort Plus D450 R  --  voorbeeldconfiguratie
+# ============================================================================
+#
+#  De sensoren staan in dezelfde volgorde als duco-parameters-per-module.md, en
+#  worden opgevraagd op hun VOLLEDIGE API-pad (`param: Ventilation.Fan.PressSup`).
+#  Die namen komen uit /info en /config van de communicatieprint; de adressen
+#  erachter zijn op de bus waargenomen en staan in components/duco/duco_verified.h.
+#
+#  Waarom het volledige pad en niet alleen de bladnaam: namen als `State`, `Mode`
+#  en `NodeIn` komen in meerdere modules voor. Een bladnaam die maar EEN keer
+#  bestaat werkt ook (`param: PressSup`), maar bij twijfel is het pad eenduidig.
+#
+#  LET OP -- dit bestand zet ALLE 123 geverifieerde parameters neer. Dat is veel
+#  entiteiten voor Home Assistant. Bedoeld als naslag: knip eruit wat je nodig
+#  hebt. De meeste zijn `entity_category: diagnostic`, zodat ze niet in het
+#  hoofdoverzicht terechtkomen.
+#
+#  Twee schalen om in de gaten te houden: de VENTILATORdrukken staan in 0,1 Pa
+#  (bus 240 = 24,0 Pa), de INREGELdrukken in hele Pa. Dat is hieronder al verwerkt.
+# ============================================================================
+
+esphome:
+  name: duco-gw
+  friendly_name: DUCO-GW
+
+esp32:
+  board: wt32-eth01
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+web_server:
+  port: 80
+
+# WT32-ETH01 heeft bedrade ethernet. Gebruik je een gewone ESP32, vervang dit
+# blok dan door een `wifi:`-blok.
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  phy_addr: 1
+  power_pin: GPIO16
+  clk:
+    mode: CLK_EXT_IN
+    pin: 0
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [duco]
+
+# Tijdbron. Nodig voor het gelijkzetten van de boxklok (`time_id` hieronder).
+# `homeassistant` kan ook, maar sntp werkt ook zonder verbinding met HA.
+time:
+  - platform: sntp
+    id: esp_time
+    timezone: Europe/Amsterdam
+
+uart:
+  id: duco_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO33
+  baud_rate: 57600
+  rx_buffer_size: 256
+
+duco:
+  id: my_duco
+  uart_id: duco_uart
+  time_id: esp_time
+  update_interval: 15s
+  comm_responder: true
+  # Identiteit die de ESP als communicatieprint aan de box meldt. Zonder deze
+  # twee serienummers valt de component terug op plaatshouders en toont het
+  # boxdisplay het LAN-menu niet. Vul hier de nummers van je EIGEN print in.
+  comm_identity:
+    serial_board: "PS2335000000"
+    serial_duco: "P200002-230101-002"
+  # Zet eenmalig op bv. 90 om de nodenummers te ontdekken, daarna terug op 0.
+  scan_max: 0
+  # --- alleen voor foutzoeken ---------------------------------------------
+  # debug_raw: true    # log elke ruwe byte, zoals de sniffer
+  # sniffer: true      # stuur alleen een probe en dump alles
+  # passive: true      # nooit zenden; decoderen gaat wel door
+  # decode_log: true   # log de gedecodeerde frames
+  # --- klok van de box gelijkzetten ---------------------------------------
+  # Duwt 0x24 sub 05 ALLEEN als de ESP-tijd geldig is en de box meer dan
+  # time_threshold afwijkt.
+  time_threshold: 2s
+
+# ============================================================================
+#  Box-parameters, in de volgorde van duco-parameters-per-module.md
+# ============================================================================
+
+sensor:
+  # ---- ActiveHouse.AutoCtrl ----
+  - platform: duco
+    duco_id: my_duco
+    param: ActiveHouse.AutoCtrl.EnableGroupAlign
+    name: "ActiveHouse.AutoCtrl.EnableGroupAlign"
+    entity_category: diagnostic
+
+  # ---- ActiveHouse.DataExt ----
+  - platform: duco
+    duco_id: my_duco
+    param: ActiveHouse.DataExt.TempCore
+    name: "ActiveHouse.DataExt.TempCore"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ActiveHouse.DataExt.TempCoreStatus
+    name: "ActiveHouse.DataExt.TempCoreStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ActiveHouse.DataExt.TempCoreTimeValid
+    name: "ActiveHouse.DataExt.TempCoreTimeValid"
+    entity_category: diagnostic
+
+  # ---- ActiveHouse.TempHandler ----
+  - platform: duco
+    duco_id: my_duco
+    param: ActiveHouse.TempHandler.TempCoreNodeSrc
+    name: "ActiveHouse.TempHandler.TempCoreNodeSrc"
+    entity_category: diagnostic
+
+  # ---- ClimateCtrl.Cooling ----
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.Cooling.NodeIn
+    name: "ClimateCtrl.Cooling.NodeIn"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.Cooling.NodeOut
+    name: "ClimateCtrl.Cooling.NodeOut"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.Cooling.Passthrough
+    name: "ClimateCtrl.Cooling.Passthrough"
+    entity_category: diagnostic
+
+  # ---- ClimateCtrl.DataExt ----
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.CoolingPosIn
+    name: "ClimateCtrl.DataExt.CoolingPosIn"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.CoolingPosInStatus
+    name: "ClimateCtrl.DataExt.CoolingPosInStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.CoolingPosInTimeValid
+    name: "ClimateCtrl.DataExt.CoolingPosInTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.CoolingPosTgtOut
+    name: "ClimateCtrl.DataExt.CoolingPosTgtOut"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.CoolingPosTgtOutStatus
+    name: "ClimateCtrl.DataExt.CoolingPosTgtOutStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.CoolingPosTgtOutTimeValid
+    name: "ClimateCtrl.DataExt.CoolingPosTgtOutTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.HeatingPosIn
+    name: "ClimateCtrl.DataExt.HeatingPosIn"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.HeatingPosInStatus
+    name: "ClimateCtrl.DataExt.HeatingPosInStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.HeatingPosInTimeValid
+    name: "ClimateCtrl.DataExt.HeatingPosInTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.HeatingPosTgtOut
+    name: "ClimateCtrl.DataExt.HeatingPosTgtOut"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.HeatingPosTgtOutStatus
+    name: "ClimateCtrl.DataExt.HeatingPosTgtOutStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.HeatingPosTgtOutTimeValid
+    name: "ClimateCtrl.DataExt.HeatingPosTgtOutTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.Mode
+    name: "ClimateCtrl.DataExt.Mode"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.ModeStatus
+    name: "ClimateCtrl.DataExt.ModeStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.ModeTgt
+    name: "ClimateCtrl.DataExt.ModeTgt"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.ModeTgtStatus
+    name: "ClimateCtrl.DataExt.ModeTgtStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.ModeTgtTimeValid
+    name: "ClimateCtrl.DataExt.ModeTgtTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.DataExt.ModeTimeValid
+    name: "ClimateCtrl.DataExt.ModeTimeValid"
+    entity_category: diagnostic
+
+  # ---- ClimateCtrl.General ----
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.General.TempEnvCooling
+    name: "ClimateCtrl.General.TempEnvCooling"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.General.TempEnvHeating
+    name: "ClimateCtrl.General.TempEnvHeating"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+
+  # ---- ClimateCtrl.Heating ----
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.Heating.NodeIn
+    name: "ClimateCtrl.Heating.NodeIn"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.Heating.NodeOut
+    name: "ClimateCtrl.Heating.NodeOut"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: ClimateCtrl.Heating.Passthrough
+    name: "ClimateCtrl.Heating.Passthrough"
+    entity_category: diagnostic
+
+  # ---- General.Modbus ----
+  - platform: duco
+    duco_id: my_duco
+    param: General.Modbus.Addr
+    name: "General.Modbus.Addr"
+    entity_category: diagnostic
+
+  # ---- General.Setup ----
+  - platform: duco
+    duco_id: my_duco
+    param: General.Setup.EnableDisplayErrorAlert
+    name: "General.Setup.EnableDisplayErrorAlert"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: General.Setup.EnableDisplayUc
+    name: "General.Setup.EnableDisplayUc"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: General.Setup.Language
+    name: "General.Setup.Language"
+    entity_category: diagnostic
+
+  # ---- General.Time ----
+  - platform: duco
+    duco_id: my_duco
+    param: General.Time.Dst
+    name: "General.Time.Dst"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: General.Time.TimeZone
+    name: "General.Time.TimeZone"
+    entity_category: diagnostic
+
+  # ---- HeatRecovery.Bypass ----
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.Bypass.Adaptive
+    name: "HeatRecovery.Bypass.Adaptive"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.Bypass.DoubleBypass
+    name: "HeatRecovery.Bypass.DoubleBypass"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.Bypass.Mode
+    name: "HeatRecovery.Bypass.Mode"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.Bypass.Pos
+    name: "HeatRecovery.Bypass.Pos"
+    unit_of_measurement: "%"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.Bypass.TempSupTgt
+    name: "HeatRecovery.Bypass.TempSupTgt"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.Bypass.TempSupTgtZone1
+    name: "HeatRecovery.Bypass.TempSupTgtZone1"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.Bypass.TempSupTgtZone2
+    name: "HeatRecovery.Bypass.TempSupTgtZone2"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.Bypass.TimeFilter
+    name: "HeatRecovery.Bypass.TimeFilter"
+    unit_of_measurement: "d"
+    entity_category: diagnostic
+
+  # ---- HeatRecovery.General ----
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.General.TimeFilterRemain
+    name: "HeatRecovery.General.TimeFilterRemain"
+    unit_of_measurement: "d"
+    entity_category: diagnostic
+
+  # ---- HeatRecovery.ProtectFrost ----
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.ProtectFrost.HeaterOdaExtPresent
+    name: "HeatRecovery.ProtectFrost.HeaterOdaExtPresent"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: HeatRecovery.ProtectFrost.PassiveHouse
+    name: "HeatRecovery.ProtectFrost.PassiveHouse"
+    entity_category: diagnostic
+
+  # ---- NightBoost.General ----
+  - platform: duco
+    duco_id: my_duco
+    param: NightBoost.General.Enable
+    name: "NightBoost.General.Enable"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: NightBoost.General.FlowLvlReqMax
+    name: "NightBoost.General.FlowLvlReqMax"
+    unit_of_measurement: "%"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: NightBoost.General.MonthStart
+    name: "NightBoost.General.MonthStart"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: NightBoost.General.MonthStop
+    name: "NightBoost.General.MonthStop"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: NightBoost.General.TempStart
+    name: "NightBoost.General.TempStart"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: NightBoost.General.TimeStart
+    name: "NightBoost.General.TimeStart"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: NightBoost.General.TimeStop
+    name: "NightBoost.General.TimeStop"
+    entity_category: diagnostic
+
+  # ---- Ventilation.Boost ----
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Boost.Enable
+    name: "Ventilation.Boost.Enable"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Boost.Lvl
+    name: "Ventilation.Boost.Lvl"
+    unit_of_measurement: "%"
+    entity_category: diagnostic
+
+  # ---- Ventilation.Calibration ----
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Calibration.FlowEhaCfg
+    name: "Ventilation.Calibration.FlowEhaCfg"
+    unit_of_measurement: "m³/h"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Calibration.FlowSupCfgZone1
+    name: "Ventilation.Calibration.FlowSupCfgZone1"
+    unit_of_measurement: "m³/h"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Calibration.FlowSupCfgZone2
+    name: "Ventilation.Calibration.FlowSupCfgZone2"
+    unit_of_measurement: "m³/h"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Calibration.GroundBound
+    name: "Ventilation.Calibration.GroundBound"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Calibration.PressEhaCfg
+    name: "Ventilation.Calibration.PressEhaCfg"
+    unit_of_measurement: "Pa"
+    device_class: pressure
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Calibration.PressSupCfgZone1
+    name: "Ventilation.Calibration.PressSupCfgZone1"
+    unit_of_measurement: "Pa"
+    device_class: pressure
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Calibration.PressSupCfgZone2
+    name: "Ventilation.Calibration.PressSupCfgZone2"
+    unit_of_measurement: "Pa"
+    device_class: pressure
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Calibration.State
+    name: "Ventilation.Calibration.State"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Calibration.SubState
+    name: "Ventilation.Calibration.SubState"
+    entity_category: diagnostic
+
+  # ---- Ventilation.Ctrl ----
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Ctrl.TempDepEnable
+    name: "Ventilation.Ctrl.TempDepEnable"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Ctrl.TempDepThsHigh
+    name: "Ventilation.Ctrl.TempDepThsHigh"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Ctrl.TempDepThsLow
+    name: "Ventilation.Ctrl.TempDepThsLow"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Ctrl.TreeBalanceThs
+    name: "Ventilation.Ctrl.TreeBalanceThs"
+    entity_category: diagnostic
+
+  # ---- Ventilation.Fan ----
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Fan.PressEha
+    name: "Ventilation.Fan.PressEha"
+    unit_of_measurement: "Pa"
+    accuracy_decimals: 1
+    device_class: pressure
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Fan.PressEhaTgt
+    name: "Ventilation.Fan.PressEhaTgt"
+    unit_of_measurement: "Pa"
+    accuracy_decimals: 1
+    device_class: pressure
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Fan.PressSup
+    name: "Ventilation.Fan.PressSup"
+    unit_of_measurement: "Pa"
+    accuracy_decimals: 1
+    device_class: pressure
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Fan.PressSupTgt
+    name: "Ventilation.Fan.PressSupTgt"
+    unit_of_measurement: "Pa"
+    accuracy_decimals: 1
+    device_class: pressure
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Fan.PwmEha
+    name: "Ventilation.Fan.PwmEha"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Fan.PwmLvlEha
+    name: "Ventilation.Fan.PwmLvlEha"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Fan.PwmLvlSup
+    name: "Ventilation.Fan.PwmLvlSup"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Fan.PwmSup
+    name: "Ventilation.Fan.PwmSup"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Fan.SpeedEha
+    name: "Ventilation.Fan.SpeedEha"
+    unit_of_measurement: "rpm"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Fan.SpeedSup
+    name: "Ventilation.Fan.SpeedSup"
+    unit_of_measurement: "rpm"
+    entity_category: diagnostic
+
+  # ---- Ventilation.IdentifyZone ----
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.IdentifyZone.State
+    name: "Ventilation.IdentifyZone.State"
+    entity_category: diagnostic
+
+  # ---- Ventilation.Sensor ----
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Sensor.TempEha
+    name: "Ventilation.Sensor.TempEha"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Sensor.TempEta
+    name: "Ventilation.Sensor.TempEta"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Sensor.TempOda
+    name: "Ventilation.Sensor.TempOda"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: Ventilation.Sensor.TempSup
+    name: "Ventilation.Sensor.TempSup"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+
+  # ---- WeatherHandler.DataExt ----
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.DirWind
+    name: "WeatherHandler.DataExt.DirWind"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.DirWindStatus
+    name: "WeatherHandler.DataExt.DirWindStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.DirWindTimeValid
+    name: "WeatherHandler.DataExt.DirWindTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.IrradEast
+    name: "WeatherHandler.DataExt.IrradEast"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.IrradNorth
+    name: "WeatherHandler.DataExt.IrradNorth"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.IrradSouth
+    name: "WeatherHandler.DataExt.IrradSouth"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.IrradStatus
+    name: "WeatherHandler.DataExt.IrradStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.IrradTimeValid
+    name: "WeatherHandler.DataExt.IrradTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.IrradWest
+    name: "WeatherHandler.DataExt.IrradWest"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.Precip
+    name: "WeatherHandler.DataExt.Precip"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.PrecipStatus
+    name: "WeatherHandler.DataExt.PrecipStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.PrecipTimeValid
+    name: "WeatherHandler.DataExt.PrecipTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.SpeedWind
+    name: "WeatherHandler.DataExt.SpeedWind"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.SpeedWindStatus
+    name: "WeatherHandler.DataExt.SpeedWindStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.SpeedWindTimeValid
+    name: "WeatherHandler.DataExt.SpeedWindTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.TempOutside
+    name: "WeatherHandler.DataExt.TempOutside"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.TempOutsideStatus
+    name: "WeatherHandler.DataExt.TempOutsideStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherHandler.DataExt.TempOutsideTimeValid
+    name: "WeatherHandler.DataExt.TempOutsideTimeValid"
+    entity_category: diagnostic
+
+  # ---- WeatherProtect.DataExt ----
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.LouvreVentState
+    name: "WeatherProtect.DataExt.LouvreVentState"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.LouvreVentStatus
+    name: "WeatherProtect.DataExt.LouvreVentStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.LouvreVentTimeStart
+    name: "WeatherProtect.DataExt.LouvreVentTimeStart"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.LouvreVentTimeStop
+    name: "WeatherProtect.DataExt.LouvreVentTimeStop"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.LouvreVentTimeValid
+    name: "WeatherProtect.DataExt.LouvreVentTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.RoofWindowState
+    name: "WeatherProtect.DataExt.RoofWindowState"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.RoofWindowStatus
+    name: "WeatherProtect.DataExt.RoofWindowStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.RoofWindowTimeStart
+    name: "WeatherProtect.DataExt.RoofWindowTimeStart"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.RoofWindowTimeStop
+    name: "WeatherProtect.DataExt.RoofWindowTimeStop"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.RoofWindowTimeValid
+    name: "WeatherProtect.DataExt.RoofWindowTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.ScreenState
+    name: "WeatherProtect.DataExt.ScreenState"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.ScreenStatus
+    name: "WeatherProtect.DataExt.ScreenStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.ScreenTimeStart
+    name: "WeatherProtect.DataExt.ScreenTimeStart"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.ScreenTimeStop
+    name: "WeatherProtect.DataExt.ScreenTimeStop"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.ScreenTimeValid
+    name: "WeatherProtect.DataExt.ScreenTimeValid"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.SlideState
+    name: "WeatherProtect.DataExt.SlideState"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.SlideStatus
+    name: "WeatherProtect.DataExt.SlideStatus"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.SlideTimeStart
+    name: "WeatherProtect.DataExt.SlideTimeStart"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.SlideTimeStop
+    name: "WeatherProtect.DataExt.SlideTimeStop"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    param: WeatherProtect.DataExt.SlideTimeValid
+    name: "WeatherProtect.DataExt.SlideTimeValid"
+    entity_category: diagnostic
+
+# ============================================================================
+#  Per node -- live waarden
+# ============================================================================
+#  Node 1 = de DucoBox zelf. Pas de nodenummers aan op je eigen installatie
+#  (zet scan_max eenmalig op 90 om ze te vinden).
+#  `uptime`, `co2` en `temp` komen alle drie uit hetzelfde 0x49-blok.
+#  NB: `uptime` heette eerder `iaq_co2`; dat was fout. Offset 8 is de uptime van
+#  de node in minuten, geen luchtkwaliteitspercentage. De oude naam werkt nog.
+
+  - platform: duco
+    duco_id: my_duco
+    node: 1
+    type: uptime
+    name: "Node 1 uptime"
+    unit_of_measurement: "min"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    node: 4
+    type: co2
+    name: "Node 4 CO2"
+    unit_of_measurement: "ppm"
+    device_class: carbon_dioxide
+  - platform: duco
+    duco_id: my_duco
+    node: 4
+    type: temp
+    name: "Node 4 temperatuur"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+  - platform: duco
+    duco_id: my_duco
+    node: 4
+    type: flow
+    name: "Node 4 debiet"
+    unit_of_measurement: "%"
+
+# ============================================================================
+#  Identity-velden (handshake print <-> box, geen box-parameters)
+# ============================================================================
+#  Deze waarden reizen niet als parameter maar in de 0x20/0x22-handshake.
+#  Groep 1 = de STATISCHE netwerkconfiguratie, groep 2 = wat er in gebruik is.
+
+text_sensor:
+  # ---- General.Board (identiteit van de communicatieprint) ----
+  - platform: duco
+    duco_id: my_duco
+    type: comm_serial_board
+    name: "General.Board.SerialBoardComm"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: comm_serial_duco
+    name: "General.Board.SerialDucoComm"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: comm_sw_version
+    name: "General.Board.SwVersionComm"
+    entity_category: diagnostic
+  # SerialDucoBox komt ook als box-parameterreeks 0x0602..0x0606
+  - platform: duco
+    duco_id: my_duco
+    type: box_serial
+    name: "General.Board.SerialDucoBox"
+    entity_category: diagnostic
+  # Het printplaatnummer van de box zit in node-register 0x08, niet in een
+  # box-parameter. Gevonden door in de reboot-opname op de ruwe bytes te zoeken.
+  - platform: duco
+    duco_id: my_duco
+    node: 1
+    type: serial_board
+    name: "General.Board.SerialBoardBox"
+    entity_category: diagnostic
+
+  # ---- General.Lan ----
+  - platform: duco
+    duco_id: my_duco
+    type: comm_ip
+    name: "General.Lan.Ip"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: comm_gateway
+    name: "General.Lan.DefaultGateway"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: comm_netmask
+    name: "General.Lan.NetMask"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: comm_hostname
+    name: "General.Lan.HostName"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: comm_static_ip
+    name: "General.Lan.StaticIp"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: comm_static_netmask
+    name: "General.Lan.StaticNetMask"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: comm_static_gateway
+    name: "General.Lan.StaticDefaultGateway"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: comm_static_dns
+    name: "General.Lan.StaticDns"
+    entity_category: diagnostic
+  # De WiFi-AP-sleutel staat in box-parameters 0x060A..0x060C en wordt door de
+  # print EEN keer gelezen, kort na zijn eigen boot.
+  - platform: duco
+    duco_id: my_duco
+    type: box_wifi_ap_key
+    name: "General.Lan.WifiApKey"
+    entity_category: diagnostic
+
+  # ---- Klok van de box ----
+  - platform: duco
+    duco_id: my_duco
+    type: box_time
+    name: "General.Board.TimeUtc"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: box_time_local
+    name: "General.Board.Time"
+    entity_category: diagnostic
+  - platform: duco
+    duco_id: my_duco
+    type: box_timezone_utc
+    name: "Box tijdzone UTC"
+    entity_category: diagnostic
+  # Install mode: de box kondigt dit ongevraagd aan met 0x2C 0C 01 04 <n>.
+  - platform: duco
+    duco_id: my_duco
+    type: install_mode
+    name: "General.NetworkDuco.State"
+    entity_category: diagnostic
+
+# ============================================================================
+#  Node-parameters (service 6) -- lezen EN schrijven
+# ============================================================================
+#  Lezen `0x18 00 <node> <param>`, schrijven `0x18 01 <node> <param> <u16 BE>`.
+#  Let op de asymmetrie: de leesreply is little-endian, de schrijfvraag
+#  big-endian. Bereik en stapgrootte levert de box zelf mee.
+
+number:
+  - platform: duco
+    duco_id: my_duco
+    node: 1
+    type: time_man
+    name: "Duur handmatige stand"
+    unit_of_measurement: "min"
+    entity_category: config
+  - platform: duco
+    duco_id: my_duco
+    node: 1
+    type: flow_lvl_man1
+    name: "Stand MAN1 debiet"
+    unit_of_measurement: "%"
+    entity_category: config
+  - platform: duco
+    duco_id: my_duco
+    node: 1
+    type: flow_lvl_man2
+    name: "Stand MAN2 debiet"
+    unit_of_measurement: "%"
+    entity_category: config
+  - platform: duco
+    duco_id: my_duco
+    node: 1
+    type: flow_lvl_man3
+    name: "Stand MAN3 debiet"
+    unit_of_measurement: "%"
+    entity_category: config
+  - platform: duco
+    duco_id: my_duco
+    node: 4
+    type: co2_setpoint
+    name: "Node 4 CO2-instelpunt"
+    unit_of_measurement: "ppm"
+    entity_category: config
+  # Klokinstellingen van de box (box-parameters 0x0802 / 0x0806). Negatieve
+  # tijdzones gaan als tweecomplement over de bus; gecontroleerd met -10 en -11.
+  - platform: duco
+    duco_id: my_duco
+    type: box_timezone
+    name: "Box tijdzone instellen"
+    entity_category: config
+  - platform: duco
+    duco_id: my_duco
+    type: box_dst
+    name: "Box zomertijd instellen"
+    entity_category: config
+
+# ============================================================================
+#  Keuzelijsten
+# ============================================================================
+
+select:
+  # Ventilatiestand per node. De x2/x3-varianten zijn echt instelbaar: de
+  # firmware pakt een druktelling in de bovenste twee bits (waarde = n<<6 | stand).
+  - platform: duco
+    duco_id: my_duco
+    node: 1
+    name: "Ventilatiestand"
+
+  # Node-parameters met benoemde waarden. De positie in de lijst IS de buswaarde.
+  - platform: duco
+    duco_id: my_duco
+    node: 1
+    param: uc_error_mode
+    name: "Bedieningsschakelaar foutmodus"
+    entity_category: config
+  - platform: duco
+    duco_id: my_duco
+    node: 52
+    param: switch_mode
+    name: "Schakelmodus"
+    entity_category: config
+
+  # Acties met een enum. Een /action met ValType Enum is geen apart mechanisme:
+  # de print vertaalt hem naar een gewone box-parameterschrijfactie.
+  - platform: duco
+    duco_id: my_duco
+    action: identify_zone
+    name: "Zone identificeren"
+    entity_category: config
+  # LET OP: alles behalve STOP start een echte inregelprocedure die de
+  # ventilatoren op uitersten laat draaien.
+  - platform: duco
+    duco_id: my_duco
+    action: calibration_state
+    name: "Inregeling"
+    entity_category: config
+
+# ============================================================================
+#  Knoppen -- node-acties (svc4 `0x10 <sub> <node>`)
+# ============================================================================
+#  0x04 identify, 0x08 herstarten, 0x0A config resetten, 0x0B link mode.
+
+button:
+  - platform: duco
+    duco_id: my_duco
+    action: filter_reset
+    name: "Filtertimer resetten"
+    entity_category: config
+  - platform: duco
+    duco_id: my_duco
+    action: install_mode_on
+    name: "Install mode aan"
+    entity_category: config
+  - platform: duco
+    duco_id: my_duco
+    action: install_mode_off
+    name: "Install mode uit"
+    entity_category: config
+  - platform: duco
+    duco_id: my_duco
+    node: 4
+    action: identify_on
+    name: "Node 4 identificeren"
+    entity_category: config
+  - platform: duco
+    duco_id: my_duco
+    node: 4
+    action: reboot
+    name: "Node 4 herstarten"
+    entity_category: config
+  # Link mode werkt ALLEEN met de box in install mode. Daarbuiten weigert de
+  # print het commando lokaal en gaat er niets de bus op.
+  - platform: duco
+    duco_id: my_duco
+    node: 4
+    action: link_mode_on
+    name: "Node 4 link mode aan"
+    entity_category: config
+  # Bewust uitgecommentarieerd: reset_config zet de configuratie van een node
+  # terug naar fabriekswaarden, en er is geen commando om dat terug te draaien.
+  # Haal het commentaar weg als je die knop echt wilt.
+  # - platform: duco
+  #   duco_id: my_duco
+  #   node: 4
+  #   action: reset_config
+  #   name: "Node 4 configuratie resetten"
+  #   entity_category: config

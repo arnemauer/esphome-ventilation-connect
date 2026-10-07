@@ -1,0 +1,25 @@
+# ESPHome build
+.esphome/
+secrets.yaml
+*.bin
+
+# Snifflogs en opnames -- die bevatten serienummers, MAC-adressen en
+# netwerkgegevens van de installatie waarop ze zijn gemaakt.
+*.log
+*.har
+*.dnt
+sniffs/
+logs/
+duco-sniff-*.txt
+duco-log-*.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
