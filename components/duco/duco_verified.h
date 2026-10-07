@@ -1,4 +1,9 @@
 #pragma once
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 esphome-duco contributors
+//
+// Deze component is een afgeleid werk van ESPHome, waarvan de C++/runtime onder
+// GPLv3 staat. Zie LICENSE.
 // GEGENEREERD uit duco-parameters-per-module.md -- niet met de hand bijwerken.
 //
 // Waarom dit bestand naast duco_params.h bestaat: die tabel is een generieke

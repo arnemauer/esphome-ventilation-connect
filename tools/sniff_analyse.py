@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 esphome-duco contributors
+#
+# Deze component is een afgeleid werk van ESPHome, waarvan de C++/runtime onder
+# GPLv3 staat. Zie LICENSE.
 """Standaardanalyse van een tweerichtings-snifflog.
 
     python tools/sniff_analyse.py <logbestand> [hh:mm:ss]

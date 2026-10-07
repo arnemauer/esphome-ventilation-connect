@@ -1,4 +1,9 @@
 #pragma once
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 esphome-duco contributors
+//
+// Deze component is een afgeleid werk van ESPHome, waarvan de C++/runtime onder
+// GPLv3 staat. Zie LICENSE.
 // Duco error-code explanations (NL), from "Information sheet - Error codes
 // mechanical ventilation" L2003312-D (13.08.2025), pages 2-6.
 // Codes print as E<a>.<b>.<c> (bus bytes 38 1F 01 -> E56.31.1).

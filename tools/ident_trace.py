@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 esphome-duco contributors
+#
+# Deze component is een afgeleid werk van ESPHome, waarvan de C++/runtime onder
+# GPLv3 staat. Zie LICENSE.
 """Volg de identity-velden over de tijd, uit de HERBOUWDE bytestroom.
 
 De vorige poging zocht met een regex naar 0x22-frames binnen losse logregels.

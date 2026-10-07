@@ -183,4 +183,5 @@ zoals hij was.
 
 ## Licentie
 
-MIT — zie [LICENSE](LICENSE).
+**GPLv3** — zie [LICENSE](LICENSE). Dat geldt voor de hele repository: de
+component, de documentatie en de scripts.

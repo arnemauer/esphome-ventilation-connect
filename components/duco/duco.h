@@ -1,4 +1,9 @@
 #pragma once
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 esphome-duco contributors
+//
+// Deze component is een afgeleid werk van ESPHome, waarvan de C++/runtime onder
+// GPLv3 staat. Zie LICENSE.
 // ESPHome external component for the DucoBox internal UART protocol.
 // Reverse-engineered frame format:
 //   AA 55 | LEN | FUNC | ID | DATA... | CRC16(MODBUS, little-endian)
