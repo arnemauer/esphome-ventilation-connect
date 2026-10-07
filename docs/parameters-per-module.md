@@ -23,6 +23,7 @@ delen (zoals de vier `Irrad`-richtingen) staat dat gedeelde paar in het blok van
 
 `TimeStart`/`TimeStop` van WeatherProtect staan apart: 0x802C/0x8030 (Screen), 0x8034/0x8038
 (LouvreVent), 0x803C/0x8040 (RoofWindow), 0x804C/0x8050 (Slide).
+| 🔸 | busadres waargenomen en waarde gelezen; **naam afgeleid**, niet uit `/info` (zie open punt A7) |
 | ❓ | geen busadres bekend |
 | 🖥️ | gaat NIET over de bus: instelling van de communicatieprint zelf |
 
@@ -329,8 +330,11 @@ delen (zoals de vier `Irrad`-richtingen) staat dat gedeelde paar in het blok van
 |---|---|---|---|---|---|---|
 | `Error` | R | 0 |  |  | 0x070A of 0x0E02 of 0x1101 … | 🟡 |
 | `FlowEhaCfg` | R/W | 295 | 0..450 /5 | m³/h | 0x0959 | ◆ |
+| `FlowEhaCfgMax` | R | 450 |  | m³/h | 0x094A | 🔸 |
 | `FlowSupCfgZone1` | R/W | 205 | 0..275 /5 | m³/h | 0x0953 | ◆ |
+| `FlowSupCfgZone1Max` | R | 275 |  | m³/h | 0x094B | 🔸 |
 | `FlowSupCfgZone2` | R/W | 90 | 0..275 /5 | m³/h | 0x0955 | ◆ |
+| `FlowSupCfgZone2Max` | R | 275 |  | m³/h | 0x094C | 🔸 |
 | `GroundBound` | W | 1 | 0..1 /1 |  | 0x0408 | ✅ |
 | `MethodInitMeasSysLoadAvail` | R | False |  |  | 0x0996 | 🟡 |
 | `MethodPwmAvail` | R | False |  |  | 0x098F | 🟡 |
