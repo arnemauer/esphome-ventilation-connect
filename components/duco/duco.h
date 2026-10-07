@@ -488,6 +488,7 @@ class DucoComponent : public PollingComponent, public uart::UARTDevice {
   // RX framing
   enum { WAIT_AA, WAIT_55, BODY } rx_state_{WAIT_AA};
   std::vector<uint8_t> rx_;
+  bool rx_esc_{false};   // last body byte was a 0xAA: next 0x01 is filler, 0x55 a new frame
   uint32_t rx_last_ms_{0};
 
   // in-flight request

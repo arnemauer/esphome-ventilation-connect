@@ -538,12 +538,19 @@ void DucoComponent::loop() {
     switch (this->rx_state_) {
       case WAIT_AA: if (b == 0xAA) this->rx_state_ = WAIT_55; break;
       case WAIT_55:
-        if (b == 0x55) { this->rx_state_ = BODY; this->rx_.clear(); }
+        if (b == 0x55) { this->rx_state_ = BODY; this->rx_.clear(); this->rx_esc_ = false; }
         else if (b != 0xAA) this->rx_state_ = WAIT_AA;
         break;
       case BODY:
-        // unstuff: a 0x01 right after a 0xAA is filler
-        if (!this->rx_.empty() && this->rx_.back() == 0xAA && b == 0x01) break;
+        // unstuff: the box sends a literal 0xAA as `AA 01`. Track that with a flag,
+        // not with rx_.back(): after the filler back() is still 0xAA, so a real 0x01
+        // right behind it (e.g. id 0xAA + data `01 ..`) used to be dropped as well.
+        if (this->rx_esc_) {
+          this->rx_esc_ = false;
+          if (b == 0x01) break;
+          if (b == 0x55) { this->rx_.clear(); break; }   // `AA 55`: new frame, last one was cut short
+        }
+        if (b == 0xAA) this->rx_esc_ = true;
         this->rx_.push_back(b);
         if (this->rx_.size() >= 1) {
           size_t need = 1 + (size_t) this->rx_[0] + 2;  // LEN + payload + CRC
@@ -591,9 +598,25 @@ void DucoComponent::log_decoded_(const uint8_t *buf, size_t len) {
   auto b = [&](int i) -> int { return (i >= 0 && i < n) ? d[i] : 0; };
   char desc[112];
   switch (func) {
-    case 0x0C: snprintf(desc, sizeof(desc), "node-read req %s node %d",
-                        n && d[0] == 0x02 ? "live" : n && d[0] == 0x01 ? "type"
-                        : n && d[0] == 0x04 ? "SET-MODE" : "sub", b(1)); break;
+    case 0x0C:
+      // One-byte requests carry no node: the real print polls `0C 00` and `0C 0B`
+      // every ~1.5 s. `0B` returns a 32-byte bitmap of the registered nodes (bit n =
+      // node n; here 7E .. 10 = nodes 1-6 + 52). `00` returns one byte, 0x66 = 102 here,
+      // probably the highest node address (after a print restart it scans `0C 0A`
+      // for nodes 0..101). Sniffed 03..06-10.
+      if (n == 1 && d[0] == 0x0B)
+        snprintf(desc, sizeof(desc), "node-list bitmap req");
+      else if (n == 1)
+        snprintf(desc, sizeof(desc), "box-read req sub 0x%02X", d[0]);
+      // `0A <node>` -> `01 <node> <active> ? <e0> <e1>`: the node's active error
+      // (`01 06 01 01 38 1F` = node 6, E56.31), matching the 0x2C pushes.
+      else if (n >= 2 && d[0] == 0x0A)
+        snprintf(desc, sizeof(desc), "node error-status req node %d", b(1));
+      else
+        snprintf(desc, sizeof(desc), "node-read req %s node %d",
+                 b(0) == 0x02 ? "live" : b(0) == 0x01 ? "type" : b(0) == 0x04 ? "SET-MODE"
+                 : b(0) == 0x08 ? "SET-PARENT" : b(0) == 0x09 ? "SET-ASSO" : "sub", b(1));
+      break;
     case 0x0D: snprintf(desc, sizeof(desc), "node-read ACK"); break;
     case 0x0E: snprintf(desc, sizeof(desc), "node-read reply (%dB: mode=%d flow=%d)", n, b(0), b(2)); break;
     case 0x10: snprintf(desc, sizeof(desc), "multi-func req sub=0x%02X node %d", b(0), b(1)); break;
