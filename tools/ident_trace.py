@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2026 esphome-duco contributors
+# Copyright (C) 2026 esphome-ventilation-connect contributors
 #
 # Deze component is een afgeleid werk van ESPHome, waarvan de C++/runtime onder
 # GPLv3 staat. Zie LICENSE.
