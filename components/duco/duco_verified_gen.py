@@ -114,6 +114,8 @@ VERIFIED_PATHS = [
     "WeatherHandler.DataExt.TempOutside",
     "WeatherHandler.DataExt.TempOutsideStatus",
     "WeatherHandler.DataExt.TempOutsideTimeValid",
+    "WeatherHandler.WeatherStationDiag.Period",
+    "WeatherHandler.WeatherStationDiag.Type",
     "WeatherProtect.DataExt.LouvreVentState",
     "WeatherProtect.DataExt.LouvreVentStatus",
     "WeatherProtect.DataExt.LouvreVentTimeStart",

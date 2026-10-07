@@ -120,6 +120,8 @@ static const DucoVerifiedDef DUCO_VERIFIED[] = {
   {"WeatherHandler.DataExt.TempOutside", 0x8018, 0.100f, true},  // 0,1 °C
   {"WeatherHandler.DataExt.TempOutsideStatus", 0x801A, 1.000f, false},
   {"WeatherHandler.DataExt.TempOutsideTimeValid", 0x8019, 1.000f, false},
+  {"WeatherHandler.WeatherStationDiag.Period", 0x3501, 1.000f, false},
+  {"WeatherHandler.WeatherStationDiag.Type", 0x3500, 1.000f, false},
   {"WeatherProtect.DataExt.LouvreVentState", 0x8024, 1.000f, false},
   {"WeatherProtect.DataExt.LouvreVentStatus", 0x8026, 1.000f, false},
   {"WeatherProtect.DataExt.LouvreVentTimeStart", 0x8034, 1.000f, false},

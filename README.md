@@ -14,7 +14,7 @@ parameteradressen zijn alleen op dit model geverifieerd.
 ## Wat het kan
 
 - **Lezen** — temperaturen, drukken, toerentallen, debieten, CO2, filterstand,
-  per node en per zone. 123 box-parameters zijn op de bus geverifieerd en op naam
+  per node en per zone. 125 box-parameters zijn op de bus geverifieerd en op naam
   op te vragen.
 - **Schrijven** — ventilatiestand (inclusief de MAN1x2 t/m MAN3x3-varianten),
   node-instellingen zoals CO2-instelpunt en handbedieningsduur, de klok van de
