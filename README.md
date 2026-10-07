@@ -57,7 +57,7 @@ Of rechtstreeks vanaf GitHub:
 
 ```yaml
 external_components:
-  - source: github://<gebruiker>/esphome-duco@main
+  - source: github://arnemauer/esphome-ventilation-connect@main
     components: [duco]
 ```
 
