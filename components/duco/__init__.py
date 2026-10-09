@@ -29,6 +29,7 @@ CONF_TIME_THRESHOLD = "time_threshold"
 CONF_COMM_RESPONDER = "comm_responder"
 CONF_COMM_IDENTITY = "comm_identity"
 CONF_LOG_PREFIX = "log_prefix"
+CONF_CONFIG_PARAM_INTERVAL = "config_param_interval"
 
 CONFIG_SCHEMA = (
     cv.Schema(
@@ -55,6 +56,11 @@ CONFIG_SCHEMA = (
             # Tag printed in every decode/RX line. Use it when you run one duco:
             # hub per bus direction (sniffer between box and comm print).
             cv.Optional(CONF_LOG_PREFIX, default=""): cv.string,
+            # Hoe vaak param:/bus_id:-sensoren voor box-INSTELLINGEN worden gelezen als
+            # ze geen eigen update_interval hebben. Het gaat om de 92 IDs die de echte
+            # communicatieprint maar elke 15 minuten opvraagt (duco_poll_classes.h).
+            # 0s = elke ronde, zoals voorheen.
+            cv.Optional(CONF_CONFIG_PARAM_INTERVAL, default="15min"): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_COMM_IDENTITY): cv.Schema(
                 {
                     cv.Optional("ip"): cv.string,          # "192.168.1.50"
@@ -107,6 +113,7 @@ async def to_code(config):
         cg.add(var.set_time_threshold(int(config[CONF_TIME_THRESHOLD].total_seconds)))
     cg.add(var.set_comm_responder(config[CONF_COMM_RESPONDER]))
     cg.add(var.set_log_prefix(config[CONF_LOG_PREFIX]))
+    cg.add(var.set_config_param_interval(config[CONF_CONFIG_PARAM_INTERVAL].total_milliseconds))
     if CONF_COMM_IDENTITY in config:
         ci = config[CONF_COMM_IDENTITY]
         if "ip" in ci:

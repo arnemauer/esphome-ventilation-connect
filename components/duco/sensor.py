@@ -8,6 +8,7 @@ import esphome.config_validation as cv
 from esphome.components import sensor
 from esphome.const import (
     CONF_ACCURACY_DECIMALS,
+    CONF_UPDATE_INTERVAL,
     CONF_DEVICE_CLASS,
     CONF_UNIT_OF_MEASUREMENT,
     DEVICE_CLASS_CARBON_DIOXIDE,
@@ -171,6 +172,13 @@ def _validate(config):
     else:
         if CONF_NODE not in config:
             raise cv.Invalid("'node:' is required for type/param/service reads")
+    if CONF_UPDATE_INTERVAL in config and (
+        CONF_PUSHED in config
+        or (CONF_TYPE in config and config[CONF_TYPE] not in ZONE_TYPES)
+    ):
+        raise cv.Invalid(
+            "'update_interval:' werkt alleen voor param:, bus_id:, zone-types en service:-reads"
+        )
     if CONF_SERVICE in config:
         for k in (CONF_REQUEST, CONF_OFFSET, CONF_VALUE_TYPE):
             if k not in config:
@@ -202,6 +210,10 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_BUS_ID): cv.hex_uint16_t,
             cv.Optional(CONF_SIGNED, default=False): cv.boolean,
             cv.Optional(CONF_SCALE, default=0.0): cv.float_,
+            # Eigen leesinterval voor deze sensor (param/bus_id/zone/raw reads). Zonder:
+            # elke ronde, behalve box-instellingen -> config_param_interval van de hub.
+            # Korter dan de update_interval van de hub kan niet: dan elke ronde.
+            cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds,
         }
     ),
     _validate,
@@ -236,6 +248,7 @@ async def to_code(config):
         var = await sensor.new_sensor(config)
         req = [0x00, bid & 0xFF, (bid >> 8) & 0xFF]
         cg.add(parent.add_raw_sensor(1, 0x24, req, 3, size, sgn, config[CONF_SCALE] or 1.0, var))
+        _interval(parent, config, var)
         return
 
     # global responder-health counters (no node)
@@ -255,6 +268,7 @@ async def to_code(config):
         # node arg is unused for these box-level reads; pass 1 as a placeholder
         cg.add(parent.add_raw_sensor(1, 0x24, req, offset, size,
                                      config[CONF_TYPE] in ZONE_SIGNED, scale, var))
+        _interval(parent, config, var)
         return
 
     node = config[CONF_NODE]
@@ -278,6 +292,7 @@ async def to_code(config):
 
     if CONF_PARAM in config:
         cg.add(parent.add_param_sensor(node, config[CONF_PARAM], config[CONF_SCALE], var))
+        _interval(parent, config, var)
         return
 
     # raw read
@@ -295,3 +310,9 @@ async def to_code(config):
             var,
         )
     )
+    _interval(parent, config, var)
+
+
+def _interval(parent, config, var):
+    if CONF_UPDATE_INTERVAL in config:
+        cg.add(parent.set_sensor_interval(var, config[CONF_UPDATE_INTERVAL].total_milliseconds))

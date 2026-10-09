@@ -205,7 +205,28 @@ NodeEntities &DucoComponent::node_entities(uint8_t node) {
   return e;
 }
 
-void DucoComponent::enqueue_(const Request &r) { this->queue_.push_back(r); }
+// Leesverzoeken die al in de wachtrij staan (of nu onderweg zijn) niet nog eens
+// toevoegen. Zonder dit groeit de wachtrij elke ronde als een ronde langer duurt dan
+// update_interval, bijvoorbeeld als de box een tijd niet antwoordt (400 ms timeout per
+// verzoek). Schrijfacties nooit overslaan: daar telt de volgorde.
+static bool is_read_kind(RequestKind k) {
+  switch (k) {
+    case REQ_SETMODE: case REQ_SETTIME: case REQ_WRITE: return false;
+    default: return true;
+  }
+}
+static bool same_request(const Request &a, const Request &b) {
+  return a.kind == b.kind && a.func == b.func && a.node == b.node && a.gen_index == b.gen_index &&
+         a.data == b.data;
+}
+void DucoComponent::enqueue_(const Request &r) {
+  if (is_read_kind(r.kind)) {
+    if (this->in_flight_ && same_request(this->inflight_, r)) return;
+    for (const Request &q : this->queue_)
+      if (same_request(q, r)) return;
+  }
+  this->queue_.push_back(r);
+}
 
 #ifdef USE_SENSOR
 void DucoComponent::set_node_sensor(uint8_t node, const std::string &field, sensor::Sensor *s) {
@@ -287,6 +308,11 @@ void DucoComponent::add_raw_sensor(uint8_t node, uint8_t func, const std::vector
   GenRead g{func, req, offset, size, sgn, scale == 0.0f ? 1.0f : scale, node, s};
   this->gen_reads_.push_back(g);
 }
+
+void DucoComponent::set_sensor_interval(sensor::Sensor *s, uint32_t ms) {
+  for (auto &g : this->gen_reads_)
+    if (g.sens == s) g.interval_ms = ms;
+}
 #endif
 
 void DucoComponent::update() {
@@ -325,8 +351,18 @@ void DucoComponent::update() {
       this->enqueue_({REQ_NODEVER, 0x10, n, {0x01, n, 0x00, 0x00, 0x04}});  // reg 0x00 (PID+ver)
   }
 #ifdef USE_SENSOR
+  // Poll-klassen: een sensor met eigen update_interval volgt die; zonder eigen
+  // interval lezen we box-instellingen (dezelfde 92 IDs die de echte print maar elke
+  // 15 min opvraagt) met config_param_interval, en al het andere elke ronde.
+  const uint32_t now_ms = millis();
   for (size_t i = 0; i < this->gen_reads_.size(); i++) {
     GenRead &g = this->gen_reads_[i];
+    uint32_t every = g.interval_ms;
+    if (every == 0 && g.func == 0x24 && g.data.size() == 3 && g.data[0] == 0x00 &&
+        duco_is_setting_param(g.data[1] | (g.data[2] << 8)))
+      every = this->config_param_interval_ms_;
+    if (every != 0 && g.last_ms != 0 && (now_ms - g.last_ms) < every) continue;
+    g.last_ms = now_ms == 0 ? 1 : now_ms;
     Request r{REQ_GEN, g.func, g.node, g.data, (int) i};
     this->enqueue_(r);
   }
@@ -1861,6 +1897,8 @@ void DucoComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "DucoBox UART:");
   ESP_LOGCONFIG(TAG, "  configured nodes: %u", (unsigned) this->nodes_.size());
   ESP_LOGCONFIG(TAG, "  discovery scan max node: %u", this->scan_max_);
+  ESP_LOGCONFIG(TAG, "  box settings read every: %u s (0 = every round)",
+                (unsigned) (this->config_param_interval_ms_ / 1000));
   if (this->comm_responder_)
     ESP_LOGCONFIG(TAG, "  comm-print responder: ENABLED (0x20 identity + 0x1C status + 0x08/0x2C ack)");
   this->check_uart_settings(57600);

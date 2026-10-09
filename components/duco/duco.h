@@ -18,6 +18,7 @@
 #include "duco_params.h"     // gegenereerd: volledige 463-parameterlijst + duco_find_param()
 #include "duco_verified.h"   // gegenereerd uit duco-parameters-per-module.md: op de
                              // bus GEVERIFIEERDE adressen, op volledig API-pad
+#include "duco_poll_classes.h"  // box-parameters die de echte print maar elke 15 min leest
 #ifdef USE_SENSOR
 #include "esphome/components/sensor/sensor.h"
 #endif
@@ -183,6 +184,10 @@ struct GenRead {
   float scale;
   uint8_t node;
   sensor::Sensor *sens;
+  // Leesinterval. 0 = automatisch: instellingen (duco_is_setting_param) volgen
+  // config_param_interval_ms_, al het andere elke ronde.
+  uint32_t interval_ms{0};
+  uint32_t last_ms{0};   // millis() van het laatste verzoek; 0 = nog nooit
 };
 
 // A passive subscription: publish when the box pushes parameter `param`.
@@ -231,6 +236,8 @@ class DucoComponent : public PollingComponent, public uart::UARTDevice {
   // registration from the platform *.py generators
   NodeEntities &node_entities(uint8_t node);
   void set_scan_max(uint8_t n) { this->scan_max_ = n; }
+  // Standaard leesinterval voor box-instellingen zonder eigen update_interval (0 = elke ronde).
+  void set_config_param_interval(uint32_t ms) { this->config_param_interval_ms_ = ms; }
 #ifdef USE_SENSOR
   void set_node_sensor(uint8_t node, const std::string &field, sensor::Sensor *s);
   // responder health counters (diagnostic; global, no node)
@@ -245,6 +252,8 @@ class DucoComponent : public PollingComponent, public uart::UARTDevice {
   // Passive push: subscribe to a parameter that the DucoBox reports unsolicited
   // (FUNC 0x08 / sub 0x02). Published whenever the box pushes that param id.
   void add_pushed_sensor(uint8_t param, float scale, bool sgn, sensor::Sensor *s);
+  // Eigen leesinterval voor een eerder toegevoegde param/raw-sensor (yaml `update_interval:`).
+  void set_sensor_interval(sensor::Sensor *s, uint32_t ms);
 #endif
 #ifdef USE_TEXT_SENSOR
   void set_node_text_sensor(uint8_t node, const std::string &field, text_sensor::TextSensor *s);
@@ -498,7 +507,8 @@ class DucoComponent : public PollingComponent, public uart::UARTDevice {
   uint32_t inflight_ms_{0};
 
   uint8_t next_id_{1};
-  uint8_t scan_max_{0};   // if >0, also poll node numbers 1..scan_max_ for discovery
+  uint8_t scan_max_{0};
+  uint32_t config_param_interval_ms_{900000};   // 15 min, net als de echte print   // if >0, also poll node numbers 1..scan_max_ for discovery
   bool typed_once_{false};
 
   // debug sniffer

@@ -108,6 +108,41 @@ param: PressSup                      # bladnaam, mag als die maar EEN keer besta
 Namen als `State`, `Mode` en `NodeIn` komen in meerdere modules voor en zijn
 daarom alleen via het volledige pad bereikbaar.
 
+### Hoe vaak er gelezen wordt
+
+Elke `update_interval` van de hub is een ronde, en standaard wordt elke
+parameter-sensor elke ronde opgevraagd. De echte communicatieprint doet dat niet:
+die leest temperaturen elke minuut, ventilator-, calibratie- en weerwaarden elke
+3 minuten, en **instellingen maar elke 15 minuten** (gemeten met de sniffer over
+bijna 6 dagen). Daarom:
+
+- Box-instellingen (de 92 IDs die de print elke 15 minuten leest, zie
+  `components/duco/duco_poll_classes.h`) worden standaard elke 15 minuten gelezen.
+  Instelbaar op de hub met `config_param_interval:`; `0s` = elke ronde, zoals voorheen.
+- Elke `param:`/`bus_id:`/zone-/`service:`-sensor accepteert een eigen
+  `update_interval:`, die voor die sensor voorgaat.
+
+```yaml
+duco:
+  update_interval: 15s
+  config_param_interval: 15min    # standaard
+
+sensor:
+  - platform: duco
+    param: Ventilation.Fan.PressSup
+    name: "Toevoerdruk"           # elke ronde (15 s)
+  - platform: duco
+    param: Ventilation.Calibration.FlowSupCfgZone1
+    name: "Inregeldebiet zone 1"  # instelling: elke 15 min
+  - platform: duco
+    param: HeatRecovery.General.TimeFilterRemain
+    name: "Filter resterend"
+    update_interval: 1h           # eigen interval
+```
+
+Een leesverzoek dat nog in de wachtrij staat, wordt niet nog eens toegevoegd. Als de
+box een tijd niet antwoordt, loopt de wachtrij dus niet vol.
+
 ### Waarom er twee adressentabellen zijn
 
 `duco_params.h` is een generieke parameterlijst en dekt 463 parameters, maar is
