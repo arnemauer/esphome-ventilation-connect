@@ -248,6 +248,8 @@ delen (zoals de vier `Irrad`-richtingen) staat dat gedeelde paar in het blok van
 | `TempSupTgt` | R | 204 |  | 0,1 °C | 0x0911 | ◆ |
 | `TempSupTgtZone1` | W | 215 | 100..255 /1 | 0,1 °C | 0x0A13 | ◆ |
 | `TempSupTgtZone2` | W | 215 | 100..255 /1 | 0,1 °C | 0x0A14 | ◆ |
+| `TempSupTgtZone3` | W | n.v.t. |  | 0,1 °C | 0x0A16 | 🔸 |
+| `TempSupTgtZone4` | W | n.v.t. |  | 0,1 °C | 0x0A17 | 🔸 |
 | `TimeFilter` | W | 180 | 90..360 /90 | dagen | 0x0A31 | ✅ |
 
 ### HeatRecovery.General
